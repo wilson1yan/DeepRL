@@ -143,6 +143,7 @@ def categorical_dqn_cart_pole():
 def categorical_dqn_pixel_atari(name):
     config = Config()
     log_dir = get_default_log_dir(categorical_dqn_pixel_atari.__name__)
+    config.game = 'breakout'
     config.task_fn = lambda: Task(name, log_dir=log_dir)
     config.eval_env = Task(name, episode_life=False)
     config.optimizer_fn = lambda params: torch.optim.Adam(params, lr=0.00025, eps=0.01 / 32)
@@ -162,7 +163,7 @@ def categorical_dqn_pixel_atari(name):
     config.categorical_n_atoms = 51
     config.sgd_update_frequency = 4
     config.gradient_clip = 0.5
-    config.max_steps = int(2e7)
+    config.max_steps = int(1e7)
     config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__)
     run_steps(CategoricalDQNAgent(config))
 
@@ -438,8 +439,8 @@ if __name__ == '__main__':
     mkdir('tf_log')
     set_one_thread()
     random_seed()
-    select_device(-1)
-    # select_device(0)
+    #select_device(-1)
+    select_device(0)
 
     # dqn_cart_pole()
     # quantile_regression_dqn_cart_pole()
@@ -452,10 +453,10 @@ if __name__ == '__main__':
     # ppo_continuous('HalfCheetah-v2')
     # ddpg_continuous('HalfCheetah-v2')
 
-    # game = 'BreakoutNoFrameskip-v4'
-    # dqn_pixel_atari(game)
+    game = 'BreakoutNoFrameskip-v0'
+    #dqn_pixel_atari(game)
     # quantile_regression_dqn_pixel_atari(game)
-    # categorical_dqn_pixel_atari(game)
+    categorical_dqn_pixel_atari(game)
     # a2c_pixel_atari(game)
     # n_step_dqn_pixel_atari(game)
     # option_ciritc_pixel_atari(game)

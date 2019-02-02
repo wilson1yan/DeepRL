@@ -4,6 +4,9 @@
 # declaration at the top                                              #
 #######################################################################
 
+import os
+from os.path import join
+
 from ..network import *
 from ..component import *
 from ..utils import *
@@ -65,6 +68,21 @@ class CategoricalDQNAgent(BaseAgent):
         self.atoms = tensor(config.atoms)
         self.delta_atom = (config.categorical_v_max - config.categorical_v_min) / float(config.categorical_n_atoms - 1)
 
+        self.store_data = True
+        self.game = config.game
+        self.data_size = 1e4
+
+        self.states = []
+        self.actions = []
+        self.rewards = []
+        self.dones = []
+
+        folder_path = join('data', 'atari_data', self.game)
+        if not os.path.exists(folder_path):
+            os.mkdir(folder_path)
+
+        self.id = 0
+
     def close(self):
         close_obj(self.replay)
         close_obj(self.actor)
@@ -83,6 +101,22 @@ class CategoricalDQNAgent(BaseAgent):
         transitions = self.actor.step()
         experiences = []
         for state, action, reward, next_state, done, _ in transitions:
+            if self.store_data:
+                self.states.append(state[3])
+                self.actions.append(action)
+                self.rewards.append(reward)
+                self.dones.append(done)
+
+                if len(self.states) >= self.data_size:
+                    data_folder = join('data', 'atari_data', self.game)
+                    np.save(join(data_folder, '{}_states_{}.npy'.format(self.game, self.id)), self.states)
+                    np.save(join(data_folder, '{}_actions_{}.npy'.format(self.game, self.id)), self.actions)
+                    np.save(join(data_folder, '{}_rewards_{}.npy'.format(self.game, self.id)), self.rewards)
+                    np.save(join(data_folder, '{}_dones_{}.npy'.format(self.game, self.id)), self.dones)
+
+                    self.id += 1
+                    self.states, self.actions, self.rewards, self.dones = [], [], [], []
+
             self.episode_reward += reward
             self.total_steps += 1
             reward = config.reward_normalizer(reward)
