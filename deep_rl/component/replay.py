@@ -4,12 +4,101 @@
 # declaration at the top                                              #
 #######################################################################
 
-import torch
-import numpy as np
-import torch.multiprocessing as mp
+import sys
+from os.path import join
 from collections import deque
+
+import numpy as np
+
+import torch
+import torch.multiprocessing as mp
+
 from ..utils import *
 
+
+class DummyReplay(object):
+
+    def __init__(self, data_path, game, batch_size,
+                 clip_reward=True, include_time_dim=False,
+                 num_img_obs=4):
+        self.data = self.load_data(data_path, game)
+
+        states, _, _, dones = self.data
+        frame_valid = np.zeros((len(states), num_img_obs))
+        for i in range(len(states)):
+            frame_valid[i, num_img_obs - 1] = 1
+            for j in range(1, num_img_obs):
+                if i - j < 0 or dones[i - j]:
+                    break
+                frame_valid[i, num_img_obs - 1 - j] = 1
+        self.frame_valid = frame_valid
+        self.clip_reward = clip_reward
+        self.include_time_dim = include_time_dim
+        self.num_img_obs = num_img_obs
+        self.batch_size = batch_size
+
+    def load_data(self, data_path, game):
+        states = np.load(join(data_path, "{}_states.npy".format(game)))
+        actions = np.load(join(data_path, "{}_actions.npy".format(game)))
+        rewards = np.load(join(data_path, "{}_rewards.npy".format(game)))
+        dones = np.load(join(data_path, "{}_dones.npy".format(game)))
+
+        dones[-1] = True
+
+        return states, actions, rewards, dones
+
+    def sample(self):
+        batch_size = self.batch_size
+        states, actions, rewards, dones = self.data
+        frame_valid = self.frame_valid
+
+        batch_idx = np.random.randint(0, len(states), size=batch_size)
+
+        state_batch = np.concatenate([states[batch_idx - i]
+                                      for i in range(self.num_img_obs - 1, -1, -1)], axis=1)
+        state_blanks = frame_valid[batch_idx]
+        state_batch *= state_blanks.reshape(state_blanks.shape + (1, 1))
+
+        if self.include_time_dim:
+            action_batch = np.concatenate([actions[idx - self.num_img_obs + 1 : idx + 1]
+                                           for idx in batch_idx])
+            reward_batch = np.concatenate([rewards[idx - self.num_img_obs + 1 : idx + 1]
+                                           for idx in batch_idx])
+            dones_batch = np.concatenate([dones[idx - self.num_img_obs + 1 : idx + 1]
+                                          for idx in batch_idx])
+        else:
+            action_batch = actions[batch_idx]
+            reward_batch = rewards[batch_idx]
+            dones_batch = dones[batch_idx]
+
+        if self.clip_reward:
+            reward_batch = np.sign(reward_batch)
+
+        next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
+        next_state_batch = np.concatenate([states[next_idxs - i]
+                                           for i in range(self.num_img_obs - 1, -1, -1)], axis=1)
+        next_state_blanks = frame_valid[next_idxs]
+        next_state_batch *= next_state_blanks.reshape(next_state_blanks.shape + (1, 1))
+
+        if self.include_time_dim:
+            state_batch = state_batch.reshape((batch_size * self.num_img_obs, 1,
+                                               state_batch.shape[2], state_batch.shape[3]))
+            next_state_batch = next_state_batch.reshape((batch_size * self.num_img_obs, 1,
+                                                         next_state_batch.shape[2],
+                                                         next_state_batch.shape[3]))
+
+        state_batch = torch.FloatTensor(state_batch.astype('float32'), device=Config.DEVICE)
+        action_batch = torch.FloatTensor(action_batch.astype('float32'), device=Config.DEVICE)
+        reward_batch = torch.FloatTensor(reward_batch.astype('float32'), device=Config.DEVICE)
+        next_state_batch = torch.FloatTensor(next_state_batch.astype('float32'), device=Config.DEVICE)
+        dones_batch = torch.FloatTensor(dones_batch.astype('float32'), device=Config.DEVICE)
+        return [state_batch, action_batch, reward_batch, next_state_batch, dones_batch]
+
+    def feed_batch(self, experience):
+        pass
+
+    def size(self):
+        return sys.maxsize
 
 class Replay:
     def __init__(self, memory_size, batch_size):
