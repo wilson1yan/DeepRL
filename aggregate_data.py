@@ -43,10 +43,10 @@ if process:
     print("Data Saved")
 else:
     to_save_folder = join('data', 'atari_data', 'processed', game)
-    np.load(join(to_save_folder, f'{game}_states.npy'))
-    np.load(join(to_save_folder, f'{game}_actions.npy'))
-    np.load(join(to_save_folder, f'{game}_rewards.npy'))
-    np.load(join(to_save_folder, f'{game}_dones.npy'))
+    states = np.load(join(to_save_folder, f'{game}_states.npy'))
+    actions = np.load(join(to_save_folder, f'{game}_actions.npy'))
+    rewards = np.load(join(to_save_folder, f'{game}_rewards.npy'))
+    dones = np.load(join(to_save_folder, f'{game}_dones.npy'))
     print("Data Loaded")
 
 print("Performing Reward Analysis...")
@@ -69,4 +69,4 @@ for start, end in episode_intervals:
 plt.figure()
 plt.hist(episode_rewards)
 plt.title(f'{game} rewards')
-plt.save_fig('rewards.png')
+plt.savefig('rewards.png')
