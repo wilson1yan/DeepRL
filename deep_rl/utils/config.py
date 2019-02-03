@@ -54,6 +54,7 @@ class Config:
         self.save_interval = 0
         self.eval_interval = 0
         self.eval_episodes = 10
+        self.eval_max_length = 27e3
         self.async_actor = True
 
     @property

@@ -10,6 +10,7 @@ from deep_rl import *
 # DQN
 def dqn_pixel_atari(name, game):
     config = Config()
+    config.sim_env = False
     config.history_length = 4
     log_dir = get_default_log_dir(dqn_pixel_atari.__name__)
     config.task_fn = lambda: Task(name, log_dir=log_dir)
@@ -20,25 +21,27 @@ def dqn_pixel_atari(name, game):
     config.network_fn = lambda: VanillaNet(config.action_dim, NatureConvBody(in_channels=config.history_length))
     config.random_action_prob = LinearSchedule(1.0, 0.01, 1e6)
 
-    # config.replay_fn = lambda: Replay(memory_size=int(1e6), batch_size=32)
-    config.replay_fn = lambda: DummyReplay(data_path='data/atari_data', game=game.lower(),
-                                           batch_size=32, num_img_obs=config.history_length)
+    config.replay_fn = lambda: DummyReplay(game=game.lower(),
+                                           batch_size=32,
+                                           num_img_obs=config.history_length)
 
     config.batch_size = 32
     config.state_normalizer = ImageNormalizer()
     config.reward_normalizer = SignNormalizer()
     config.discount = 0.99
-    config.target_network_update_freq = 10000
+    config.target_network_update_freq = 8000
     config.exploration_steps = 0
     config.sgd_update_frequency = 4
     config.gradient_clip = 5
     config.double_q = False
-    config.max_steps = int(1e7)
-    config.logger = get_logger(tag=dqn_pixel_atari.__name__)
+    config.max_steps = int(1e6)
+    config.log_interval = int(1e3)
+    config.eval_interval = int(1e3)
+    config.logger = get_logger(tag='dqn_atari_supervised_' + game.lower())
     run_steps(DQNAgent(config))
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Run Categorical DQN experiment to collect data')
+    parser = argparse.ArgumentParser(description='Run DQN with supervised data')
     parser.add_argument('--game', dest='game', default='Breakout', type=str)
     parser.add_argument('--device', dest='device', default=0, type=int)
 
@@ -51,4 +54,4 @@ if __name__ == '__main__':
     select_device(args.device)
 
     game = '{}NoFrameskip-v0'.format(args.game)
-    categorical_dqn_pixel_atari(game, args.game.lower())
+    dqn_pixel_atari(game, args.game.lower())
