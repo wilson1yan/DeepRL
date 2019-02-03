@@ -31,8 +31,8 @@ def categorical_dqn_pixel_atari(name, game):
     config.categorical_n_atoms = 51
     config.sgd_update_frequency = 4
     config.gradient_clip = 0.5
-    config.max_steps = int(1e7)
-    config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__)
+    config.max_steps = int(2e7)
+    config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__ + '_' + game)
     run_steps(CategoricalDQNAgent(config))
 
 if __name__ == '__main__':
