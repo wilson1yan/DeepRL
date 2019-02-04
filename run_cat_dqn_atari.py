@@ -12,6 +12,7 @@ def categorical_dqn_pixel_atari(name, game):
     config = Config()
     log_dir = get_default_log_dir(categorical_dqn_pixel_atari.__name__)
     config.game = game
+    config.sim_env = True
     config.task_fn = lambda: Task(name, log_dir=log_dir)
     config.eval_env = Task(name, episode_life=False)
     config.optimizer_fn = lambda params: torch.optim.Adam(params, lr=0.00025, eps=0.01 / 32)
@@ -32,6 +33,7 @@ def categorical_dqn_pixel_atari(name, game):
     config.sgd_update_frequency = 4
     config.gradient_clip = 0.5
     config.max_steps = int(2e7)
+    config.eval_interval = int(1e6)
     config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__ + '_' + game)
     run_steps(CategoricalDQNAgent(config))
 
@@ -39,7 +41,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Categorical DQN experiment to collect data')
     parser.add_argument('--game', dest='game', default='Breakout', type=str)
     parser.add_argument('--device', dest='device', default=0, type=int)
-    
+
     args = parser.parse_args()
 
     mkdir('log')

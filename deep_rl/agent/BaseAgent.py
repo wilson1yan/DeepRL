@@ -12,6 +12,7 @@ import torch.multiprocessing as mp
 from collections import deque
 import sys
 from tqdm import tqdm
+from tensorboardX import SummaryWriter
 
 class BaseAgent:
     def __init__(self, config):
@@ -48,9 +49,9 @@ class BaseAgent:
         pbar = tqdm(list(range(self.config.eval_episodes)))
         for ep in pbar:
             rewards.append(self.eval_episode(pbar))
-        self.config.logger.info('evaluation episode return: %f(%f)' % (
-            np.mean(rewards), np.std(rewards) / np.sqrt(len(rewards))))
-        self.config.logger.add_scalar('data/mean_reward', np.mean(rewards))
+        self.config.logger.info('total steps %d, evaluation episode return: %f(%f)' % (
+            self.total_steps, np.mean(rewards), np.std(rewards) / np.sqrt(len(rewards))))
+        self.config.logger.add_scalar('data/reward', np.mean(rewards))
 
 class BaseActor(mp.Process):
     STEP = 0
