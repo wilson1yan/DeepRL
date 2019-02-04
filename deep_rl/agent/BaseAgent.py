@@ -4,12 +4,14 @@
 # declaration at the top                                              #
 #######################################################################
 
+import itertools
 import torch
 import numpy as np
 from ..utils import *
 import torch.multiprocessing as mp
 from collections import deque
 import sys
+from tqdm import tqdm
 
 class BaseAgent:
     def __init__(self, config):
@@ -28,24 +30,27 @@ class BaseAgent:
     def eval_step(self, state):
         raise Exception('eval_step not implemented')
 
-    def eval_episode(self):
+    def eval_episode(self, pbar):
         env = self.config.eval_env
         state = env.reset()
         total_rewards = 0
-        while True:
+        for t in itertools.count():
+            pbar.set_description(f'timestep {t}')
             action = self.eval_step(state)
             state, reward, done, _ = env.step([action])
             total_rewards += reward[0]
-            if done[0]:
+            if done[0] or t > self.config.eval_max_length:
                 break
         return total_rewards
 
     def eval_episodes(self):
         rewards = []
-        for ep in range(self.config.eval_episodes):
-            rewards.append(self.eval_episode())
+        pbar = tqdm(list(range(self.config.eval_episodes)))
+        for ep in pbar:
+            rewards.append(self.eval_episode(pbar))
         self.config.logger.info('evaluation episode return: %f(%f)' % (
             np.mean(rewards), np.std(rewards) / np.sqrt(len(rewards))))
+        self.config.logger.add_scalar('data/mean_reward', np.mean(rewards))
 
 class BaseActor(mp.Process):
     STEP = 0

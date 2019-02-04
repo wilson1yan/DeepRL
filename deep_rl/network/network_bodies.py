@@ -6,7 +6,55 @@
 
 from .network_utils import *
 
-class NatureConvBody(nn.Module):
+class BaseBody(nn.Module):
+    def __init__(self):
+        super(BaseBody, self).__init__()
+
+    def forward(self, x):
+        return x
+
+    def reset(self):
+        pass
+
+class LSTMConvBody(BaseBody):
+    def __init__(self, hidden_size=256, num_layers=1, in_channels=1):
+        super(LSTMConvBody, self).__init__()
+        self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=8, stride=4))
+        self.conv2 = layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2))
+        self.conv3 = layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1))
+        self.lstm = layer_init(nn.LSTM(input_size=7 * 7 * 64, hidden_size=hidden_size,
+                                       num_layer=num_layers, batch_first=True))
+
+        self.start_episode = True
+
+    def forward(self, x):
+        if self.training:
+            y = y.view(x.size(0) * x.size(1), *x.size()[2:])
+            y = F.relu(self.conv1(y))
+            y = F.relu(self.conv2(y))
+            y = F.relu(self.conv3(y))
+            y = y.view(y.size(0), y.size(1), -1)
+            y, _ = self.lstm(y)
+            y = y.view(y.size(0) * y.size(1), -1)
+        else:
+            y = F.relu(self.conv1(x))
+            y = F.relu(self.conv2(y))
+            y = F.relu(self.conv3(y))
+            y = y.view(y.size(0), -1)
+            y = y.unsqueeze(1)
+            if self.start_episode:
+                y, (self.h, self.c) = self.lstm(y)
+                self.start_episode = False
+            else:
+                y, (self.h, self.c) = self.lstm(y, (self.h, self.c))
+            y = y.squeeze(1)
+        return y
+
+    def reset(self):
+        self.start_episode = True
+
+
+class NatureConvBody(BaseBody):
     def __init__(self, in_channels=4):
         super(NatureConvBody, self).__init__()
         self.feature_dim = 512
@@ -23,7 +71,7 @@ class NatureConvBody(nn.Module):
         y = F.relu(self.fc4(y))
         return y
 
-class DDPGConvBody(nn.Module):
+class DDPGConvBody(BaseBody):
     def __init__(self, in_channels=4):
         super(DDPGConvBody, self).__init__()
         self.feature_dim = 39 * 39 * 32
@@ -36,7 +84,7 @@ class DDPGConvBody(nn.Module):
         y = y.view(y.size(0), -1)
         return y
 
-class FCBody(nn.Module):
+class FCBody(BaseBody):
     def __init__(self, state_dim, hidden_units=(64, 64), gate=F.relu):
         super(FCBody, self).__init__()
         dims = (state_dim, ) + hidden_units
@@ -49,7 +97,7 @@ class FCBody(nn.Module):
             x = self.gate(layer(x))
         return x
 
-class TwoLayerFCBodyWithAction(nn.Module):
+class TwoLayerFCBodyWithAction(BaseBody):
     def __init__(self, state_dim, action_dim, hidden_units=(64, 64), gate=F.relu):
         super(TwoLayerFCBodyWithAction, self).__init__()
         hidden_size1, hidden_size2 = hidden_units
@@ -63,7 +111,7 @@ class TwoLayerFCBodyWithAction(nn.Module):
         phi = self.gate(self.fc2(torch.cat([x, action], dim=1)))
         return phi
 
-class OneLayerFCBodyWithAction(nn.Module):
+class OneLayerFCBodyWithAction(BaseBody):
     def __init__(self, state_dim, action_dim, hidden_units, gate=F.relu):
         super(OneLayerFCBodyWithAction, self).__init__()
         self.fc_s = layer_init(nn.Linear(state_dim, hidden_units))
@@ -75,15 +123,10 @@ class OneLayerFCBodyWithAction(nn.Module):
         phi = self.gate(torch.cat([self.fc_s(x), self.fc_a(action)], dim=1))
         return phi
 
-class DummyBody(nn.Module):
+class DummyBody(BaseBody):
     def __init__(self, state_dim):
         super(DummyBody, self).__init__()
         self.feature_dim = state_dim
 
     def forward(self, x):
         return x
-
-
-
-
-

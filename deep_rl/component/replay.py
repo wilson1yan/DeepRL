@@ -15,16 +15,17 @@ import torch.multiprocessing as mp
 
 from ..utils import *
 
+DATA_PATH = join('data', 'atari_data', 'processed')
 
 class DummyReplay(object):
 
-    def __init__(self, data_path, game, batch_size,
+    def __init__(self, game, batch_size,
                  clip_reward=True, include_time_dim=False,
                  num_img_obs=4):
-        self.data = self.load_data(data_path, game)
+        self.data = self.load_data(join(DATA_PATH, game), game)
 
         states, _, _, dones = self.data
-        frame_valid = np.zeros((len(states), num_img_obs))
+        frame_valid = np.zeros((len(states), num_img_obs), dtype='float32')
         for i in range(len(states)):
             frame_valid[i, num_img_obs - 1] = 1
             for j in range(1, num_img_obs):
@@ -55,17 +56,17 @@ class DummyReplay(object):
         batch_idx = np.random.randint(0, len(states), size=batch_size)
 
         state_batch = np.concatenate([states[batch_idx - i]
-                                      for i in range(self.num_img_obs - 1, -1, -1)], axis=1)
+                                      for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
         state_blanks = frame_valid[batch_idx]
         state_batch *= state_blanks.reshape(state_blanks.shape + (1, 1))
 
         if self.include_time_dim:
             action_batch = np.concatenate([actions[idx - self.num_img_obs + 1 : idx + 1]
-                                           for idx in batch_idx])
+                                           for idx in batch_idx]).astype('float32')
             reward_batch = np.concatenate([rewards[idx - self.num_img_obs + 1 : idx + 1]
-                                           for idx in batch_idx])
+                                           for idx in batch_idx]).astype('float32')
             dones_batch = np.concatenate([dones[idx - self.num_img_obs + 1 : idx + 1]
-                                          for idx in batch_idx])
+                                          for idx in batch_idx]).astype('float32')
         else:
             action_batch = actions[batch_idx]
             reward_batch = rewards[batch_idx]
@@ -76,7 +77,7 @@ class DummyReplay(object):
 
         next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
         next_state_batch = np.concatenate([states[next_idxs - i]
-                                           for i in range(self.num_img_obs - 1, -1, -1)], axis=1)
+                                           for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
         next_state_blanks = frame_valid[next_idxs]
         next_state_batch *= next_state_blanks.reshape(next_state_blanks.shape + (1, 1))
 
@@ -87,12 +88,7 @@ class DummyReplay(object):
                                                          next_state_batch.shape[2],
                                                          next_state_batch.shape[3]))
 
-        state_batch = torch.FloatTensor(state_batch.astype('float32'), device=Config.DEVICE)
-        action_batch = torch.FloatTensor(action_batch.astype('float32'), device=Config.DEVICE)
-        reward_batch = torch.FloatTensor(reward_batch.astype('float32'), device=Config.DEVICE)
-        next_state_batch = torch.FloatTensor(next_state_batch.astype('float32'), device=Config.DEVICE)
-        dones_batch = torch.FloatTensor(dones_batch.astype('float32'), device=Config.DEVICE)
-        return [state_batch, action_batch, reward_batch, next_state_batch, dones_batch]
+        return state_batch, action_batch, reward_batch, next_state_batch, dones_batch
 
     def feed_batch(self, experience):
         pass

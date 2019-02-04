@@ -62,6 +62,7 @@ class DQNAgent(BaseAgent):
         close_obj(self.actor)
 
     def eval_step(self, state):
+        self.network.eval()
         self.config.state_normalizer.set_read_only()
         state = self.config.state_normalizer(state)
         q = self.network(state)
@@ -71,19 +72,24 @@ class DQNAgent(BaseAgent):
 
     def step(self):
         config = self.config
-        transitions = self.actor.step()
-        experiences = []
-        for state, action, reward, next_state, done, _ in transitions:
-            self.episode_reward += reward
+
+        if config.sim_env:
+            transitions = self.actor.step()
+            experiences = []
+            for state, action, reward, next_state, done, _ in transitions:
+                self.episode_reward += reward
+                self.total_steps += 1
+                reward = config.reward_normalizer(reward)
+                if done:
+                    self.episode_rewards.append(self.episode_reward)
+                    self.episode_reward = 0
+                experiences.append([state, action, reward, next_state, done])
+            self.replay.feed_batch(experiences)
+        else:
             self.total_steps += 1
-            reward = config.reward_normalizer(reward)
-            if done:
-                self.episode_rewards.append(self.episode_reward)
-                self.episode_reward = 0
-            experiences.append([state, action, reward, next_state, done])
-        self.replay.feed_batch(experiences)
 
         if self.total_steps > self.config.exploration_steps:
+            self.network.train()
             experiences = self.replay.sample()
             states, actions, rewards, next_states, terminals = experiences
             states = self.config.state_normalizer(states)
@@ -108,6 +114,10 @@ class DQNAgent(BaseAgent):
             with config.lock:
                 self.optimizer.step()
 
-        if self.total_steps / self.config.sgd_update_frequency % \
-                self.config.target_network_update_freq == 0:
-            self.target_network.load_state_dict(self.network.state_dict())
+        if config.sim_env:
+            if self.total_steps / self.config.sgd_update_frequency % \
+                    self.config.target_network_update_freq == 0:
+                self.target_network.load_state_dict(self.network.state_dict())
+        else:
+            if self.total_steps % self.config.target_network_update_freq == 0:
+                self.target_network.load_state_dict(self.network.state_dict())
