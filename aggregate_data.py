@@ -23,7 +23,7 @@ if process:
     states, actions, rewards, dones = [], [], [], []
     for i in count(start):
         try:
-            states.append(np.load(join(data_folder, f'{game}_states_{i}.npy')))
+            states.append(np.expand_dims(np.load(join(data_folder, f'{game}_states_{i}.npy')), axis=1))
             actions.append(np.load(join(data_folder, f'{game}_actions_{i}.npy')))
             rewards.append(np.load(join(data_folder, f'{game}_rewards_{i}.npy')))
             dones.append(np.load(join(data_folder, f'{game}_dones_{i}.npy')))
