@@ -14,7 +14,7 @@ def categorical_dqn_pixel_atari(name, game):
     config.game = game
     config.sim_env = True
     config.task_fn = lambda: Task(name, log_dir=log_dir)
-    config.eval_env = Task(name, episode_life=True)
+    config.eval_env = Task(name, episode_life=False)
     config.optimizer_fn = lambda params: torch.optim.Adam(params, lr=0.00025, eps=0.01 / 32)
     config.network_fn = lambda: CategoricalNet(config.action_dim, config.categorical_n_atoms, NatureConvBody())
     config.random_action_prob = LinearSchedule(1.0, 0.01, 1e6)
