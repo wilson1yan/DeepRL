@@ -14,7 +14,7 @@ def dqn_pixel_atari(name, game):
     config.history_length = 4
     log_dir = get_default_log_dir(dqn_pixel_atari.__name__)
     config.task_fn = lambda: Task(name, log_dir=log_dir)
-    config.eval_env = Task(name, episode_life=False)
+    config.eval_env = Task(name, episode_life=True)
 
     config.optimizer_fn = lambda params: torch.optim.RMSprop(
         params, lr=0.00025, alpha=0.95, eps=0.01, centered=True)
@@ -29,14 +29,14 @@ def dqn_pixel_atari(name, game):
     config.state_normalizer = ImageNormalizer()
     config.reward_normalizer = SignNormalizer()
     config.discount = 0.99
-    config.target_network_update_freq = 8000
+    config.target_network_update_freq = 10000
     config.exploration_steps = 0
     config.sgd_update_frequency = 4
     config.gradient_clip = 5
     config.double_q = False
     config.max_steps = int(1e7)
     config.log_interval = int(1e4)
-    config.eval_interval = int(1e4)
+    config.eval_interval = int(1e5)
     config.logger = get_logger(tag='dqn_atari_supervised_' + game.lower())
     run_steps(DQNAgent(config))
 
@@ -53,5 +53,5 @@ if __name__ == '__main__':
     random_seed()
     select_device(args.device)
 
-    game = '{}NoFrameskip-v0'.format(args.game)
+    game = '{}NoFrameskip-v4'.format(args.game)
     dqn_pixel_atari(game, args.game.lower())

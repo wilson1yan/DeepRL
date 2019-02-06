@@ -14,7 +14,7 @@ def categorical_dqn_pixel_atari(name, game):
     config.game = game
     config.sim_env = True
     config.task_fn = lambda: Task(name, log_dir=log_dir)
-    config.eval_env = Task(name, episode_life=False)
+    config.eval_env = Task(name, episode_life=True)
     config.optimizer_fn = lambda params: torch.optim.Adam(params, lr=0.00025, eps=0.01 / 32)
     config.network_fn = lambda: CategoricalNet(config.action_dim, config.categorical_n_atoms, NatureConvBody())
     config.random_action_prob = LinearSchedule(1.0, 0.01, 1e6)
@@ -32,8 +32,8 @@ def categorical_dqn_pixel_atari(name, game):
     config.categorical_n_atoms = 51
     config.sgd_update_frequency = 4
     config.gradient_clip = 0.5
-    config.max_steps = int(2e7)
-    config.eval_interval = int(1e6)
+    config.max_steps = int(1e7)
+    config.eval_interval = int(1e5)
     config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__ + '_' + game)
     run_steps(CategoricalDQNAgent(config))
 
@@ -50,5 +50,5 @@ if __name__ == '__main__':
     random_seed()
     select_device(args.device)
 
-    game = '{}NoFrameskip-v0'.format(args.game)
+    game = '{}NoFrameskip-v4'.format(args.game)
     categorical_dqn_pixel_atari(game, args.game.lower())
