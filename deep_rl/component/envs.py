@@ -45,6 +45,8 @@ def make_env(env_id, seed, rank, log_dir, episode_life=True):
                                 clip_rewards=False,
                                 frame_stack=False,
                                 scale=False)
+            if not episode_life and 'FIRE' in env.unwrapped.get_action_meanings():
+                env = LifeFireEnv(env)
             obs_shape = env.observation_space.shape
             if len(obs_shape) == 3:
                 env = TransposeImage(env)
@@ -54,6 +56,45 @@ def make_env(env_id, seed, rank, log_dir, episode_life=True):
 
     return _thunk
 
+class LifeFireEnv(gym.Wrapper):
+    def __init__(self, env):
+        """FIRE after end-of-life
+        """
+        gym.Wrapper.__init__(self, env)
+        assert env.unwrapped.get_action_meanings()[1] == 'FIRE'
+        assert len(env.unwrapped.get_action_meanings()) >= 3
+
+    def step(self, action):
+        obs, reward, done, info = self.env.step(action)
+
+        lives = self.env.unwrapped.ale.lives()
+        lost_life = (lives < self._lives) and (lives > 0)
+        if lost_life:
+            self._life_reset()
+
+        return obs, reward, done, info
+
+    def reset(self, **kwargs):
+        """Reset only when lives are exhausted.
+        This way all states are still reachable even though lives are episodic,
+        and the learner need not know about any of this behind-the-scenes.
+        """
+        obs, _, _, _ = self.env.reset()
+        self.lives = self.env.unwrapped.ale.lives()
+        return obs
+
+    def _check_life(self):
+        lives = self.ale.lives()
+        lost_life = (lives < self.lives) and (lives > 0)
+        if lost_life:
+            self._life_reset()
+        return lost_life
+
+    def _life_reset(self):
+        self.env.step(0)  # (advance from lost life state)
+        self.env.step(1)  # (e.g. needed in Breakout, not sure what others)
+        self.env.step(2)  # (not sure if this is necessary, saw it somewhere)
+        self.lives = self.ale.lives()
 
 class TransposeImage(gym.ObservationWrapper):
     def __init__(self, env=None):

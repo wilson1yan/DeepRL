@@ -50,5 +50,5 @@ if __name__ == '__main__':
     random_seed()
     select_device(args.device)
 
-    game = '{}NoFrameskip-v0'.format(args.game)
+    game = '{}NoFrameskip-v4'.format(args.game)
     categorical_dqn_pixel_atari(game, args.game.lower())
