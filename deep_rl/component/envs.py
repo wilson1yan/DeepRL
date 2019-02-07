@@ -68,7 +68,7 @@ class LifeFireEnv(gym.Wrapper):
         obs, reward, done, info = self.env.step(action)
 
         lives = self.env.unwrapped.ale.lives()
-        lost_life = (lives < self._lives) and (lives > 0)
+        lost_life = (lives < self.lives) and (lives > 0)
         if lost_life:
             self._life_reset()
 
@@ -79,22 +79,15 @@ class LifeFireEnv(gym.Wrapper):
         This way all states are still reachable even though lives are episodic,
         and the learner need not know about any of this behind-the-scenes.
         """
-        obs, _, _, _ = self.env.reset()
+        obs = self.env.reset()
         self.lives = self.env.unwrapped.ale.lives()
         return obs
-
-    def _check_life(self):
-        lives = self.ale.lives()
-        lost_life = (lives < self.lives) and (lives > 0)
-        if lost_life:
-            self._life_reset()
-        return lost_life
 
     def _life_reset(self):
         self.env.step(0)  # (advance from lost life state)
         self.env.step(1)  # (e.g. needed in Breakout, not sure what others)
         self.env.step(2)  # (not sure if this is necessary, saw it somewhere)
-        self.lives = self.ale.lives()
+        self.lives = self.env.unwrapped.ale.lives()
 
 class TransposeImage(gym.ObservationWrapper):
     def __init__(self, env=None):

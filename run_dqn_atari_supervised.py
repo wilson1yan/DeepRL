@@ -14,7 +14,7 @@ def dqn_pixel_atari(name, game):
     config.history_length = 4
     log_dir = get_default_log_dir(dqn_pixel_atari.__name__)
     config.task_fn = lambda: Task(name, log_dir=log_dir)
-    config.eval_env = Task(name, episode_life=True)
+    config.eval_env = Task(name, episode_life=False)
 
     config.optimizer_fn = lambda params: torch.optim.RMSprop(
         params, lr=0.00025, alpha=0.95, eps=0.01, centered=True)
