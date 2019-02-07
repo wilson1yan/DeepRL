@@ -21,7 +21,7 @@ except ImportError:
     pass
 
 # adapted from https://github.com/ikostrikov/pytorch-a2c-ppo-acktr/blob/master/envs.py
-def make_env(env_id, seed, rank, log_dir, episode_life=True):
+def make_env(env_id, seed, rank, log_dir, episode_life=True, stack_size=4):
     def _thunk():
         random_seed(seed)
         if env_id.startswith("dm"):
@@ -50,7 +50,7 @@ def make_env(env_id, seed, rank, log_dir, episode_life=True):
             obs_shape = env.observation_space.shape
             if len(obs_shape) == 3:
                 env = TransposeImage(env)
-            env = FrameStack(env, 4)
+            env = FrameStack(env, stack_size)
 
         return env
 
@@ -205,10 +205,12 @@ class Task:
                  single_process=True,
                  log_dir=None,
                  episode_life=True,
+                 stack_size=4,
                  seed=np.random.randint(int(1e5))):
         if log_dir is not None:
             mkdir(log_dir)
-        envs = [make_env(name, seed, i, log_dir, episode_life) for i in range(num_envs)]
+        envs = [make_env(name, seed, i, log_dir, episode_life, stack_size)
+                for i in range(num_envs)]
         if single_process:
             Wrapper = DummyVecEnv
         else:

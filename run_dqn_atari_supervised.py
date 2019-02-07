@@ -36,7 +36,7 @@ def dqn_pixel_atari(name, game):
     config.gradient_clip = 5
     config.double_q = False
     config.max_steps = int(6e5)
-    config.log_interval = int(1e4)
+    config.log_interval = int(2e3)
     config.eval_interval = int(1e4)
     config.logger = get_logger(tag='dqn_atari_supervised_' + game.lower())
     run_steps(DQNAgent(config))

@@ -13,10 +13,10 @@ def dqn_rnn_pixel_atari(name, game):
     config = Config()
     config.sim_env = False
     config.seq_len = 10
-    config.warmup = 0
-    log_dir = get_default_log_dir(dqn_pixel_atari.__name__)
-    config.task_fn = lambda: Task(name, log_dir=log_dir)
-    config.eval_env = Task(name, episode_life=False)
+    config.warmup = 5
+    log_dir = get_default_log_dir(dqn_rnn_pixel_atari.__name__)
+    config.task_fn = lambda: Task(name, log_dir=log_dir, stack_size=config.seq_len)
+    config.eval_env = Task(name, episode_life=False, stack_size=1)
 
     config.optimizer_fn = lambda params: torch.optim.RMSprop(
         params, lr=np.sqrt(128 / 16) * 2.5e-4, alpha=0.95, eps=0.01, centered=True)
@@ -27,7 +27,7 @@ def dqn_rnn_pixel_atari(name, game):
 
     config.replay_fn = lambda: DummySeqReplay(game=game.lower(),
                                               seq_len=config.seq_len,
-                                              warmup=config.warmup
+                                              warmup=config.warmup,
                                               batch_size=128)
 
     config.batch_size = 128
@@ -40,8 +40,9 @@ def dqn_rnn_pixel_atari(name, game):
     config.gradient_clip = 5
     config.double_q = False
     config.max_steps = int(6e5)
-    config.log_interval = int(1e4)
+    config.log_interval = int(2e3)
     config.eval_interval = int(1e4)
+    config.eval_episodes = 1
     config.logger = get_logger(tag='dqn_lstm_atari_supervised_' + game.lower())
     run_steps(DQNAgent(config))
 

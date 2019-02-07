@@ -33,7 +33,7 @@ def run_steps(agent):
                     agent.total_steps, np.mean(rewards), np.median(rewards), np.min(rewards), np.max(rewards),
                     config.log_interval / (time.time() - t0)))
             else:
-                config.logger.info('total steps %d', agent.total_steps)
+                config.logger.info('total steps %d, %.2f steps/s' % (agent.total_steps, config.log_interval / (time.time() - t0)))
             t0 = time.time()
         if config.eval_interval and not agent.total_steps % config.eval_interval:
             agent.eval_episodes()

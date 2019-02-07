@@ -26,7 +26,8 @@ class DummySeqReplay(object):
         self.seq_len = seq_len
         self.warmup = warmup
         self.clip_reward = clip_reward
-        self.batch_size = batch_size
+        self.batch_size = batch_size * (seq_len - warmup)
+        self.true_batch_size = batch_size
 
         valid_seq_idx_ranges = list()
         for start, end in self.episode_intervals:
@@ -61,7 +62,7 @@ class DummySeqReplay(object):
         return episode_intervals, (states, actions, rewards, dones)
 
     def sample(self):
-        batch_size = self.batch_size
+        batch_size = self.true_batch_size
         states, actions, rewards, dones = self.data
         valid_seq_idx_ranges = self.valid_seq_idx_ranges
         valid_seq_idx_weights = self.valid_seq_idx_weights
@@ -72,7 +73,7 @@ class DummySeqReplay(object):
         batch_idx = [np.random.randint(start, end + 1)
                      for start, end in range_idx]
 
-        state_batch = np.concatenate([states[i + self.warmup:i + self.seq_len]
+        state_batch = np.concatenate([states[i:i + self.seq_len]
                                       for i in batch_idx])
         action_batch = np.concatenate([actions[i + self.warmup:i + self.seq_len]
                                        for i in batch_idx])
@@ -87,7 +88,7 @@ class DummySeqReplay(object):
         next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
         next_state_batch = np.concatenate([states[i:i + self.seq_len]
                                            for i in next_idxs])
-        dones_batch = np.concatenate([dones[i+warmup_len:i + self.seq_len]
+        dones_batch = np.concatenate([dones[i+self.warmup:i + self.seq_len]
                                       for i in batch_idx])
 
         return state_batch, action_batch, reward_batch, next_state_batch, dones_batch

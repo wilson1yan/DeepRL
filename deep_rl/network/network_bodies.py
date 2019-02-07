@@ -27,27 +27,27 @@ class LSTMConvBody(BaseBody):
         self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=8, stride=4))
         self.conv2 = layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2))
         self.conv3 = layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1))
-        self.lstm = layer_init(nn.LSTM(input_size=7 * 7 * 64, hidden_size=hidden_size,
-                                       num_layer=num_layers, batch_first=True))
+        self.lstm = nn.LSTM(input_size=7 * 7 * 64, hidden_size=hidden_size,
+                            num_layers=num_layers, batch_first=True)
+        self.feature_dim = hidden_size
 
         self.start_episode = True
 
     def forward(self, x):
         if self.training:
-            y = y.view(x.size(0) * x.size(1), *x.size()[2:])
-            y = F.relu(self.conv1(y))
+            batch_size = x.size(0) // self.seq_len
+
+            y = F.relu(self.conv1(x))
             y = F.relu(self.conv2(y))
             y = F.relu(self.conv3(y))
-            y = y.view(y.size(0), y.size(1), -1)
+            y = y.view(batch_size, self.seq_len, -1)
 
-            y1, y2 = y[:, :self.warmup], y[:, self.warmup:]
-            print(y.size(), y1.size(), y2.size())
+            y1, y2 = y[:, :self.warmup, :], y[:, self.warmup:, :]
 
             _, (h, c) = self.lstm(y1)
             h.detach(); c.detach()
             y, _ = self.lstm(y2, (h, c))
-            y = y.view(y.size(0) * y.size(1), -1)
-            print(y.size())
+            y = y.contiguous().view(y.size(0) * y.size(1), -1)
         else:
             y = F.relu(self.conv1(x))
             y = F.relu(self.conv2(y))
