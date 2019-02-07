@@ -92,6 +92,8 @@ class DQNAgent(BaseAgent):
             self.network.train()
             experiences = self.replay.sample()
             states, actions, rewards, next_states, terminals = experiences
+            print(states.shape, actions.shape, rewards.shape, next_states.shape, terminals.shape)
+
             states = self.config.state_normalizer(states)
             next_states = self.config.state_normalizer(next_states)
             q_next = self.target_network(next_states).detach()

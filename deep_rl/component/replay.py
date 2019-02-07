@@ -19,11 +19,12 @@ DATA_PATH = join('data', 'atari_data', 'processed')
 
 class DummySeqReplay(object):
 
-    def __init__(self, game, batch_size,
-                 clip_reward=True, seq_len=10):
+    def __init__(self, game, batch_size, seq_len, warmup,
+                 clip_reward=True):
         self.episode_intervals, self.data = self.load_episodes(join(DATA_PATH, game),
                                                                game)
         self.seq_len = seq_len
+        self.warmup = warmup
         self.clip_reward = clip_reward
         self.batch_size = batch_size
 
@@ -71,11 +72,11 @@ class DummySeqReplay(object):
         batch_idx = [np.random.randint(start, end + 1)
                      for start, end in range_idx]
 
-        state_batch = np.concatenate([states[i:i + self.seq_len]
+        state_batch = np.concatenate([states[i + self.warmup:i + self.seq_len]
                                       for i in batch_idx])
-        action_batch = np.concatenate([actions[i:i + self.seq_len]
+        action_batch = np.concatenate([actions[i + self.warmup:i + self.seq_len]
                                        for i in batch_idx])
-        reward_batch = np.concatenate([rewards[i:i + self.seq_len]
+        reward_batch = np.concatenate([rewards[i + self.warmup:i + self.seq_len]
                                        for i in batch_idx])
         if self.clip_reward:
             reward_batch = np.sign(reward_batch)
@@ -86,6 +87,8 @@ class DummySeqReplay(object):
         next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
         next_state_batch = np.concatenate([states[i:i + self.seq_len]
                                            for i in next_idxs])
+        dones_batch = np.concatenate([dones[i+warmup_len:i + self.seq_len]
+                                      for i in batch_idx])
 
         return state_batch, action_batch, reward_batch, next_state_batch, dones_batch
 

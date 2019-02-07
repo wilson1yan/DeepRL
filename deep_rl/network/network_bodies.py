@@ -17,8 +17,13 @@ class BaseBody(nn.Module):
         pass
 
 class LSTMConvBody(BaseBody):
-    def __init__(self, hidden_size=256, num_layers=1, in_channels=1):
+    def __init__(self, warmup, seq_len,
+                 hidden_size=256, num_layers=1, in_channels=1):
         super(LSTMConvBody, self).__init__()
+        self.warmup = warmup
+        self.seq_len = seq_len
+        assert self.warmup < self.seq_len
+
         self.conv1 = layer_init(nn.Conv2d(in_channels, 32, kernel_size=8, stride=4))
         self.conv2 = layer_init(nn.Conv2d(32, 64, kernel_size=4, stride=2))
         self.conv3 = layer_init(nn.Conv2d(64, 64, kernel_size=3, stride=1))
@@ -34,8 +39,15 @@ class LSTMConvBody(BaseBody):
             y = F.relu(self.conv2(y))
             y = F.relu(self.conv3(y))
             y = y.view(y.size(0), y.size(1), -1)
-            y, _ = self.lstm(y)
+
+            y1, y2 = y[:, :self.warmup], y[:, self.warmup:]
+            print(y.size(), y1.size(), y2.size())
+
+            _, (h, c) = self.lstm(y1)
+            h.detach(); c.detach()
+            y, _ = self.lstm(y2, (h, c))
             y = y.view(y.size(0) * y.size(1), -1)
+            print(y.size())
         else:
             y = F.relu(self.conv1(x))
             y = F.relu(self.conv2(y))
@@ -52,7 +64,6 @@ class LSTMConvBody(BaseBody):
 
     def reset(self):
         self.start_episode = True
-
 
 class NatureConvBody(BaseBody):
     def __init__(self, in_channels=4):

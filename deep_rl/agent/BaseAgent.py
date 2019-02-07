@@ -34,6 +34,8 @@ class BaseAgent:
     def eval_episode(self, pbar):
         env = self.config.eval_env
         state = env.reset()
+        self.reset()
+        
         total_rewards = 0
         for t in itertools.count():
             pbar.set_description(f'timestep {t}')
