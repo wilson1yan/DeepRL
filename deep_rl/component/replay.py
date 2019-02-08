@@ -108,7 +108,7 @@ class DummyReplay(object):
         self.data = self.load_data(join(DATA_PATH, game), game)
 
         states, _, _, dones = self.data
-        frame_valid = np.zeros(len(states), dtype='float32')
+        frame_valid = np.zeros(len(states), dtype='int64')
         for i in range(len(states)):
             for j in range(1, num_img_obs):
                 if i - j < 0 or dones[i - j]:
@@ -138,7 +138,7 @@ class DummyReplay(object):
         batch_idx = np.random.randint(0, len(states), size=batch_size)
 
         state_blanks = frame_valid[batch_idx]
-        state_batch = np.concatenate([states[np.maximum(batch_idx - i, batch_idx - frame_valid + 1)]
+        state_batch = np.concatenate([states[np.maximum(batch_idx - i, batch_idx - state_blanks + 1)]
                                       for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
 
         if self.include_time_dim:
@@ -158,7 +158,7 @@ class DummyReplay(object):
 
         next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
         next_state_blanks = frame_valid[next_idxs]
-        next_state_batch = np.concatenate([states[np.maximum(next_idxs - i, next_idxs - frame_valid + 1)]
+        next_state_batch = np.concatenate([states[np.maximum(next_idxs - i, next_idxs - next_state_blanks + 1)]
                                            for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
 
         if self.include_time_dim:

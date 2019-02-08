@@ -108,10 +108,11 @@ class DQNAgent(BaseAgent):
             actions = tensor(actions).long()
             q = self.network(states)
             q = q[self.batch_indices, actions]
-            loss = (q_next - q).pow(2).mul(0.5).mean()
+            loss = 0.5 * F.smooth_l1_loss(q, q_next)
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
+            if self.config.gradient_clip:
+                nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
             with config.lock:
                 self.optimizer.step()
 
