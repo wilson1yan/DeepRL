@@ -17,8 +17,8 @@ def dqn_pixel_atari(name, game):
     config.task_fn = lambda: Task(name, log_dir=log_dir)
     config.eval_env = Task(name, episode_life=False)
 
-    config.optimizer_fn = lambda params: torch.optim.RMSprop(
-        params, lr=np.sqrt(128 / 16) * 2.5e-4, alpha=0.95, eps=0.01, centered=True)
+    config.optimizer_fn = lambda params: torch.optim.Adam(
+        params, lr=np.sqrt(128 / 16) * 2.5e-4)
     config.network_fn = lambda: VanillaNet(config.action_dim, NatureConvBody(in_channels=config.history_length))
     config.random_action_prob = LinearSchedule(1.0, 0.01, 1e6)
 

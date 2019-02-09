@@ -36,12 +36,15 @@ def run_steps(agent):
                     config.log_interval / (time.time() - t0)))
             t0 = time.time()
         if config.eval_interval and not agent.total_steps % config.eval_interval:
-            if pbar:
-                pbar.close()
+            if not config.sim_env:
+                if pbar:
+                    pbar.close()
             agent.eval_episodes()
-            pbar = tqdm(total=config.eval_interval)
-        pbar.update()
-        pbar.set_description(desc='total steps %d' % (agent.total_steps))
+            if not config.sim_env:
+                pbar = tqdm(total=config.eval_interval)
+        if not config.sim_env:
+            pbar.update()
+            pbar.set_description(desc='total steps %d' % (agent.total_steps))
         if config.max_steps and agent.total_steps >= config.max_steps:
             agent.close()
             break
