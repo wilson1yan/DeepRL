@@ -187,9 +187,11 @@ class DummyReplay(object):
         states, _, _, dones = self.data
         frame_valid = np.zeros(len(states), dtype='int64')
         for i in range(len(states)):
-            for j in range(1, num_img_obs+1):
+            for j in range(1, num_img_obs):
                 if i - j < 0 or dones[i - j]:
                     break
+            else:
+                j = 4
             frame_valid[i] = j
         self.frame_valid = frame_valid
         self.clip_reward = clip_reward
