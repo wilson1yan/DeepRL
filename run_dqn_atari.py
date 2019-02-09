@@ -33,6 +33,7 @@ def dqn_pixel_atari(name, game):
     config.exploration_steps = 50000
     config.sgd_update_frequency = 4
     config.gradient_clip = 5
+    config.store_data = True
     # config.double_q = True
     config.double_q = False
     config.max_steps = int(2e7)
