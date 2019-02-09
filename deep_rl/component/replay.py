@@ -100,6 +100,83 @@ class DummySeqReplay(object):
         def size(self):
             return sys.maxsize
 
+class AsyncDummyReplay(mp.Process):
+    SAMPLE = 0
+    EXIT = 1
+
+    def __init__(self, game, batch_size,
+                 clip_reward=True, include_time_dim=False,
+                 num_img_obs=4):
+        mp.Process.__init__(self)
+        self.pipe, self.worker_pipe = mp.Pipe()
+        self.batch_size = batch_size
+        self.cache_len = 2
+        self.game = game
+        self.clip_reward = clip_reward
+        self.include_time_dim = include_time_dim
+        self.num_img_obs = num_img_obs
+
+        self.start()
+
+    def run(self):
+        torch.cuda.is_available()
+        replay = DummyReplay(self.game, self.batch_size,
+                             clip_reward=self.clip_reward,
+                             include_time_dim=self.include_time_dim,
+                             num_img_obs=self.num_img_obs)
+        cache = []
+        first = True
+        cur_cache = 0
+
+        def set_up_cache():
+            batch_data = replay.sample()
+            batch_data = [tensor(x) for x in batch_data]
+            for i in range(self.cache_len):
+                cache.append([x.clone() for x in batch_data])
+                for x in cache[i]: x.share_memory_()
+            sample(0)
+            sample(1)
+
+        def sample(cur_cache):
+            batch_data = replay.sample()
+            batch_data = [tensor(x) for x in batch_data]
+            for cache_x, x in zip(cache[cur_cache], batch_data):
+                cache_x.copy_(x)
+
+        while True:
+            op, data = self.worker_pipe.recv()
+            if op == self.SAMPLE:
+                if first:
+                    set_up_cache()
+                    first = False
+                    self.worker_pipe.send([cur_cache, cache])
+                else:
+                    self.worker_pipe.send([cur_cache, None])
+                cur_cache = (cur_cache + 1) % 2
+                sample(cur_cache)
+            elif op == self.EXIT:
+                self.worker_pipe.close()
+                return
+            else:
+                raise Exception('Unknown command')
+
+    def feed(self, exp):
+        pass
+
+    def feed_batch(self, exps):
+        pass
+
+    def sample(self):
+        self.pipe.send([self.SAMPLE, None])
+        cache_id, data = self.pipe.recv()
+        if data is not None:
+            self.cache = data
+        return self.cache[cache_id]
+
+    def close(self):
+        self.pipe.send([self.EXIT, None])
+        self.pipe.close()
+
 class DummyReplay(object):
 
     def __init__(self, game, batch_size,

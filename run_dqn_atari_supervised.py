@@ -22,9 +22,9 @@ def dqn_pixel_atari(name, game):
     config.network_fn = lambda: VanillaNet(config.action_dim, NatureConvBody(in_channels=config.history_length))
     config.random_action_prob = LinearSchedule(1.0, 0.01, 1e6)
 
-    config.replay_fn = lambda: DummyReplay(game=game.lower(),
-                                           batch_size=128,
-                                           num_img_obs=config.history_length)
+    config.replay_fn = lambda: AsyncDummyReplay(game=game.lower(),
+                                                batch_size=128,
+                                                num_img_obs=config.history_length)
 
     config.batch_size = 128
     config.state_normalizer = ImageNormalizer()
@@ -33,11 +33,12 @@ def dqn_pixel_atari(name, game):
     config.target_network_update_freq = int(8e4)
     config.exploration_steps = 0
     config.sgd_update_frequency = 4
-    config.gradient_clip = None
+    config.gradient_clip = 5
     config.double_q = False
     config.max_steps = int(1e7)
     config.log_interval = int(2e3)
     config.eval_interval = int(1e4)
+    config.eval_episodes = 10
     config.logger = get_logger(tag='dqn_atari_supervised_' + game.lower())
     run_steps(DQNAgent(config))
 
