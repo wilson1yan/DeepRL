@@ -107,7 +107,7 @@ class CategoricalDQNAgent(BaseAgent):
                 self.rewards.append(reward)
                 self.dones.append(done)
 
-                if len(self.states) >= self.data_size:
+                if len(self.states) >= self.data_size and done:
                     data_folder = join('data', 'atari_data', self.game)
                     np.save(join(data_folder, '{}_states_{}.npy'.format(self.game, self.id)), self.states)
                     np.save(join(data_folder, '{}_actions_{}.npy'.format(self.game, self.id)), self.actions)

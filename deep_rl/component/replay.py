@@ -100,6 +100,83 @@ class DummySeqReplay(object):
         def size(self):
             return sys.maxsize
 
+class AsyncDummyReplay(mp.Process):
+    SAMPLE = 0
+    EXIT = 1
+
+    def __init__(self, game, batch_size,
+                 clip_reward=True, include_time_dim=False,
+                 num_img_obs=4):
+        mp.Process.__init__(self)
+        self.pipe, self.worker_pipe = mp.Pipe()
+        self.batch_size = batch_size
+        self.cache_len = 2
+        self.game = game
+        self.clip_reward = clip_reward
+        self.include_time_dim = include_time_dim
+        self.num_img_obs = num_img_obs
+
+        self.start()
+
+    def run(self):
+        torch.cuda.is_available()
+        replay = DummyReplay(self.game, self.batch_size,
+                             clip_reward=self.clip_reward,
+                             include_time_dim=self.include_time_dim,
+                             num_img_obs=self.num_img_obs)
+        cache = []
+        first = True
+        cur_cache = 0
+
+        def set_up_cache():
+            batch_data = replay.sample()
+            batch_data = [tensor(x) for x in batch_data]
+            for i in range(self.cache_len):
+                cache.append([x.clone() for x in batch_data])
+                for x in cache[i]: x.share_memory_()
+            sample(0)
+            sample(1)
+
+        def sample(cur_cache):
+            batch_data = replay.sample()
+            batch_data = [tensor(x) for x in batch_data]
+            for cache_x, x in zip(cache[cur_cache], batch_data):
+                cache_x.copy_(x)
+
+        while True:
+            op, data = self.worker_pipe.recv()
+            if op == self.SAMPLE:
+                if first:
+                    set_up_cache()
+                    first = False
+                    self.worker_pipe.send([cur_cache, cache])
+                else:
+                    self.worker_pipe.send([cur_cache, None])
+                cur_cache = (cur_cache + 1) % 2
+                sample(cur_cache)
+            elif op == self.EXIT:
+                self.worker_pipe.close()
+                return
+            else:
+                raise Exception('Unknown command')
+
+    def feed(self, exp):
+        pass
+
+    def feed_batch(self, exps):
+        pass
+
+    def sample(self):
+        self.pipe.send([self.SAMPLE, None])
+        cache_id, data = self.pipe.recv()
+        if data is not None:
+            self.cache = data
+        return self.cache[cache_id]
+
+    def close(self):
+        self.pipe.send([self.EXIT, None])
+        self.pipe.close()
+
 class DummyReplay(object):
 
     def __init__(self, game, batch_size,
@@ -108,11 +185,13 @@ class DummyReplay(object):
         self.data = self.load_data(join(DATA_PATH, game), game)
 
         states, _, _, dones = self.data
-        frame_valid = np.zeros(len(states), dtype='float32')
+        frame_valid = np.zeros(len(states), dtype='int64')
         for i in range(len(states)):
             for j in range(1, num_img_obs):
                 if i - j < 0 or dones[i - j]:
                     break
+            else:
+                j = 4
             frame_valid[i] = j
         self.frame_valid = frame_valid
         self.clip_reward = clip_reward
@@ -138,7 +217,7 @@ class DummyReplay(object):
         batch_idx = np.random.randint(0, len(states), size=batch_size)
 
         state_blanks = frame_valid[batch_idx]
-        state_batch = np.concatenate([states[np.maximum(batch_idx - i, batch_idx - frame_valid + 1)]
+        state_batch = np.concatenate([states[np.maximum(batch_idx - i, batch_idx - state_blanks + 1)]
                                       for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
 
         if self.include_time_dim:
@@ -158,7 +237,7 @@ class DummyReplay(object):
 
         next_idxs = np.array([idx + 1 if not dones[idx] else idx for idx in batch_idx])
         next_state_blanks = frame_valid[next_idxs]
-        next_state_batch = np.concatenate([states[np.maximum(next_idxs - i, next_idxs - frame_valid + 1)]
+        next_state_batch = np.concatenate([states[np.maximum(next_idxs - i, next_idxs - next_state_blanks + 1)]
                                            for i in range(self.num_img_obs - 1, -1, -1)], axis=1).astype('float32')
 
         if self.include_time_dim:

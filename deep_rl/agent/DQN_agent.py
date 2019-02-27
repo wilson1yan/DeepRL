@@ -57,6 +57,20 @@ class DQNAgent(BaseAgent):
         self.total_steps = 0
         self.batch_indices = range_tensor(self.replay.batch_size)
 
+        self.game = config.game
+        self.data_size = 1e4
+
+        self.states = []
+        self.actions = []
+        self.rewards = []
+        self.dones = []
+
+        folder_path = join('data', 'atari_data', self.game)
+        if not os.path.exists(folder_path):
+            os.mkdir(folder_path)
+
+        self.id = 0
+
     def close(self):
         close_obj(self.replay)
         close_obj(self.actor)
@@ -77,6 +91,22 @@ class DQNAgent(BaseAgent):
             transitions = self.actor.step()
             experiences = []
             for state, action, reward, next_state, done, _ in transitions:
+                if config.store_data:
+                    self.states.append(state[3])
+                    self.actions.append(action)
+                    self.rewards.append(reward)
+                    self.dones.append(done)
+
+                    if len(self.states) >= self.data_size and done:
+                        data_folder = join('data', 'atari_data', self.game)
+                        np.save(join(data_folder, '{}_states_{}.npy'.format(self.game, self.id)), self.states)
+                        np.save(join(data_folder, '{}_actions_{}.npy'.format(self.game, self.id)), self.actions)
+                        np.save(join(data_folder, '{}_rewards_{}.npy'.format(self.game, self.id)), self.rewards)
+                        np.save(join(data_folder, '{}_dones_{}.npy'.format(self.game, self.id)), self.dones)
+
+                        self.id += 1
+                        self.states, self.actions, self.rewards, self.dones = [], [], [], []
+
                 self.episode_reward += reward
                 self.total_steps += 1
                 reward = config.reward_normalizer(reward)
@@ -108,10 +138,11 @@ class DQNAgent(BaseAgent):
             actions = tensor(actions).long()
             q = self.network(states)
             q = q[self.batch_indices, actions]
-            loss = (q_next - q).pow(2).mul(0.5).mean()
+            loss = 0.5 * F.smooth_l1_loss(q, q_next)
             self.optimizer.zero_grad()
             loss.backward()
-            nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
+            if self.config.gradient_clip:
+                nn.utils.clip_grad_norm_(self.network.parameters(), self.config.gradient_clip)
             with config.lock:
                 self.optimizer.step()
 
