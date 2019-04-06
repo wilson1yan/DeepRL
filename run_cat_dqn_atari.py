@@ -35,7 +35,14 @@ def categorical_dqn_pixel_atari(name, game):
     config.max_steps = int(2e7)
     config.eval_interval = int(1e5)
     config.logger = get_logger(tag=categorical_dqn_pixel_atari.__name__ + '_' + game)
-    run_steps(CategoricalDQNAgent(config))
+
+    exp_args = dict(
+        exp='cat_dqn',
+        name=game,
+        run_ID=0,
+    )
+
+    run_steps(CategoricalDQNAgent(config), exp_args)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run Categorical DQN experiment to collect data')
