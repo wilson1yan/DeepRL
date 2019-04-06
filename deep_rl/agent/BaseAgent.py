@@ -55,6 +55,7 @@ class BaseAgent:
             self.total_steps, np.mean(rewards), np.std(rewards) / np.sqrt(len(rewards))))
         self.config.logger.add_scalar('data/mean_reward', np.mean(rewards))
         self.config.logger.add_scalar('data/max_reward', np.max(rewards))
+        return np.mean(rewards)
 
 class BaseActor(mp.Process):
     STEP = 0

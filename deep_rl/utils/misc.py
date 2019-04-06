@@ -4,10 +4,13 @@
 # declaration at the top                                              #
 #######################################################################
 
+import csv
+import json
 import numpy as np
 from tqdm import tqdm
 import pickle
 import os
+from os.path import exists, join
 import datetime
 import torch
 import time
@@ -19,7 +22,22 @@ except:
     # python == 2.7
     from pathlib2 import Path
 
-def run_steps(agent):
+def run_steps(agent, exp_args):
+    exp_name = exp_args['exp']
+    name = exp_args['name']
+    run_ID = exp_args['run_ID']
+
+    folder = join('data', 'local', exp_name)
+    if not exists(folder):
+        os.makedirs(folder)
+
+    folder = join(folder, '{}_{}'.format(name, run_ID))
+    with open(join(folder, 'params.json')) as json_file:
+        json.dump(exp_args, json_file)
+    csv_file = open(join(folder, 'progress.csv'), 'w', newline='')
+    writer = csv.writer(csv_file, delimiter=',')
+    writer.writerow(['CumCompletedSteps', 'RawReturnAverage'])
+
     config = agent.config
     agent_name = agent.__class__.__name__
     t0 = time.time()
@@ -39,7 +57,8 @@ def run_steps(agent):
             if not config.sim_env:
                 if pbar:
                     pbar.close()
-            agent.eval_episodes()
+            mean_reward = agent.eval_episodes()
+            writer.writerow([agent.total_steps, mean_reward])
             if not config.sim_env:
                 pbar = tqdm(total=config.eval_interval)
         if not config.sim_env:
@@ -49,6 +68,7 @@ def run_steps(agent):
             agent.close()
             break
         agent.step()
+    csv_file.close()
 
 def get_time_str():
     return datetime.datetime.now().strftime("%y%m%d-%H%M%S")
