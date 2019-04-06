@@ -47,7 +47,7 @@ class LSTMConvBody(BaseBody):
             _, (h, c) = self.lstm(y1)
             h.detach(); c.detach()
             y, _ = self.lstm(y2, (h, c))
-            y = y.contiguous().view(y.size(0) * y.size(1), -1)
+            y = y.contiguous()[:, -1]
         else:
             y = F.relu(self.conv1(x))
             y = F.relu(self.conv2(y))
