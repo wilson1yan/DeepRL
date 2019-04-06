@@ -68,7 +68,7 @@ class CategoricalDQNAgent(BaseAgent):
         self.atoms = tensor(config.atoms)
         self.delta_atom = (config.categorical_v_max - config.categorical_v_min) / float(config.categorical_n_atoms - 1)
 
-        self.store_data = False
+        self.store_data = True
         self.game = config.game
         self.data_size = 1e4
 
