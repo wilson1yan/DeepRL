@@ -27,14 +27,13 @@ def run_steps(agent, exp_args):
     name = exp_args['name']
     run_ID = exp_args['run_ID']
 
-    folder = join('data', 'local', exp_name)
+    folder = join('data', 'local', exp_name, '{}_{}'.format(name, run_ID))
     if not exists(folder):
         os.makedirs(folder)
 
-    folder = join(folder, '{}_{}'.format(name, run_ID))
-    with open(join(folder, 'params.json')) as json_file:
+    with open(join(folder, 'params.json'), 'w+') as json_file:
         json.dump(exp_args, json_file)
-    csv_file = open(join(folder, 'progress.csv'), 'w', newline='')
+    csv_file = open(join(folder, 'progress.csv'), 'w+', newline='')
     writer = csv.writer(csv_file, delimiter=',')
     writer.writerow(['CumCompletedSteps', 'RawReturnAverage'])
 
