@@ -44,7 +44,18 @@ def dqn_rnn_pixel_atari(name, game):
     config.eval_interval = int(1e4)
     config.eval_episodes = 1
     config.logger = get_logger(tag='dqn_lstm_atari_supervised_' + game.lower())
-    run_steps(DQNAgent(config))
+
+    n_trials = 2
+    for i in range(n_trials):
+        exp_args = dict(
+            exp='dqn_atari_superised',
+            name=game,
+            run_ID=i,
+            seq_len=config.seq_len,
+            warmup=config.warmup,
+        )
+
+        run_steps(DQNAgent(config), exp_args)
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser(description='Run DQN with supervised data')
